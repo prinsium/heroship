@@ -6,6 +6,8 @@ on:
 jobs:
   screenshot:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       
@@ -14,28 +16,51 @@ jobs:
         with:
           node-version: '20'
       
-      - name: Install Puppeteer
-        run: npm install puppeteer
+      - name: Install Puppeteer and Chrome
+        run: |
+          npm install puppeteer
+          # This specifically downloads the Chrome binary into the runner
+          npx puppeteer browsers install chrome
 
       - name: Take 16:10 Screenshot
         run: |
           node -e "
           const puppeteer = require('puppeteer');
+          const fs = require('fs');
           (async () => {
-            const browser = await puppeteer.launch({ headless: 'new' });
-            const page = await browser.newPage();
-            await page.setViewport({ width: 1280, height: 800 });
-            await page.goto('${{ github.event.client_payload.url }}', { waitUntil: 'networkidle2' });
-            const fs = require('fs');
-            if (!fs.existsSync('public/captures')) fs.mkdirSync('public/captures', { recursive: true });
-            await page.screenshot({ path: 'public/captures/${{ github.event.client_payload.id }}.png' });
-            await browser.close();
+            try {
+              // We let Puppeteer find the browser we just installed
+              const browser = await puppeteer.launch({ 
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] 
+              });
+              const page = await browser.newPage();
+              await page.setViewport({ width: 1280, height: 800 });
+              
+              console.log('Navigating to: ${{ github.event.client_payload.url }}');
+              await page.goto('${{ github.event.client_payload.url }}', { 
+                waitUntil: 'networkidle2', 
+                timeout: 60000 
+              });
+              
+              // Ensure directory exists
+              if (!fs.existsSync('public/captures')) {
+                fs.mkdirSync('public/captures', { recursive: true });
+              }
+              
+              const path = 'public/captures/${{ github.event.client_payload.id }}.png';
+              await page.screenshot({ path: path });
+              await browser.close();
+              console.log('✅ Captured successfully');
+            } catch (e) {
+              console.error('❌ Error:', e.message);
+              process.exit(1);
+            }
           })();"
 
-      - name: Commit Image
+      - name: Commit and Push
         run: |
-          git config --global user.name 'Heroship Bot'
-          git config --global user.email 'bot@heroship.app'
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add public/captures/
-          git commit -m "Capture: ${{ github.event.client_payload.url }}" || echo "No changes to commit"
+          git commit -m "Capture: ${{ github.event.client_payload.url }}" || echo "No changes"
           git push
