@@ -1,0 +1,41 @@
+name: Remote Screenshot Capture
+on:
+  repository_dispatch:
+    types: [capture-hero]
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Puppeteer
+        run: npm install puppeteer
+
+      - name: Take 16:10 Screenshot
+        run: |
+          node -e "
+          const puppeteer = require('puppeteer');
+          (async () => {
+            const browser = await puppeteer.launch({ headless: 'new' });
+            const page = await browser.newPage();
+            await page.setViewport({ width: 1280, height: 800 });
+            await page.goto('${{ github.event.client_payload.url }}', { waitUntil: 'networkidle2' });
+            const fs = require('fs');
+            if (!fs.existsSync('public/captures')) fs.mkdirSync('public/captures', { recursive: true });
+            await page.screenshot({ path: 'public/captures/${{ github.event.client_payload.id }}.png' });
+            await browser.close();
+          })();"
+
+      - name: Commit Image
+        run: |
+          git config --global user.name 'Heroship Bot'
+          git config --global user.email 'bot@heroship.app'
+          git add public/captures/
+          git commit -m "Capture: ${{ github.event.client_payload.url }}" || echo "No changes to commit"
+          git push
