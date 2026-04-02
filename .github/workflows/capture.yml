@@ -38,8 +38,8 @@ jobs:
               
               console.log('Navigating to: ${{ github.event.client_payload.url }}');
               await page.goto('${{ github.event.client_payload.url }}', { 
-                waitUntil: 'networkidle2', 
-                timeout: 60000 
+                waitUntil: 'domcontentloaded', 
+                timeout: 90000 
               });
               
               // Ensure directory exists
