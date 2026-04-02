@@ -51,6 +51,15 @@ export const Heroship: CollectionConfig = {
   fields: [
     { name: 'name', type: 'text', required: true },
     { name: 'link', type: 'text', required: true },
+    { 
+    name: 'autoImage', 
+    type: 'ui', // This is just a helper for the Admin panel
+    admin: {
+      components: {
+        Field: '@/components/ScreenshotPreview', 
+      }
+    }
+  },
     { name: 'tags', type: 'relationship', relationTo: 'tags', hasMany: true },
   ],
 }
