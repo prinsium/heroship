@@ -22,6 +22,41 @@ jobs:
           # This specifically downloads the Chrome binary into the runner
           npx puppeteer browsers install chrome
 
+      # - name: Take 16:10 Screenshot
+      #   run: |
+      #     node -e "
+      #     const puppeteer = require('puppeteer');
+      #     const fs = require('fs');
+      #     (async () => {
+      #       try {
+      #         // We let Puppeteer find the browser we just installed
+      #         const browser = await puppeteer.launch({ 
+      #           args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] 
+      #         });
+      #         const page = await browser.newPage();
+      #         await page.setViewport({ width: 1280, height: 800 });
+              
+      #         console.log('Navigating to: ${{ github.event.client_payload.url }}');
+      #         await page.goto('${{ github.event.client_payload.url }}', { 
+      #           waitUntil: 'domcontentloaded', 
+      #           timeout: 90000 
+      #         });
+              
+      #         // Ensure directory exists
+      #         if (!fs.existsSync('public/captures')) {
+      #           fs.mkdirSync('public/captures', { recursive: true });
+      #         }
+              
+      #         const path = 'public/captures/${{ github.event.client_payload.id }}.png';
+      #         await page.screenshot({ path: path });
+      #         await browser.close();
+      #         console.log('✅ Captured successfully');
+      #       } catch (e) {
+      #         console.error('❌ Error:', e.message);
+      #         process.exit(1);
+      #       }
+      #     })();"
+
       - name: Take 16:10 Screenshot
         run: |
           node -e "
@@ -29,18 +64,36 @@ jobs:
           const fs = require('fs');
           (async () => {
             try {
-              // We let Puppeteer find the browser we just installed
               const browser = await puppeteer.launch({ 
                 args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] 
               });
               const page = await browser.newPage();
-              await page.setViewport({ width: 1280, height: 800 });
+              
+              // Set viewport to 16:10 with high-res scale (Retina style)
+              await page.setViewport({ 
+                width: 1280, 
+                height: 800, 
+                deviceScaleFactor: 2 
+              });
               
               console.log('Navigating to: ${{ github.event.client_payload.url }}');
+              
+              // 1. Fast load
               await page.goto('${{ github.event.client_payload.url }}', { 
                 waitUntil: 'domcontentloaded', 
                 timeout: 90000 
               });
+              
+              // 2. SMART WAIT: Wait for the Hero content to exist
+              try {
+                await page.waitForSelector('h1, h2, main, #hero', { timeout: 15000 });
+                console.log('Found main content, waiting for animations...');
+              } catch (e) {
+                console.log('Could not find specific hero selector, proceeding anyway.');
+              }
+
+              // 3. THE MAGIC PAUSE: Give animations (like Walrus waves) time to finish
+              await new Promise(resolve => setTimeout(resolve, 5000));
               
               // Ensure directory exists
               if (!fs.existsSync('public/captures')) {
@@ -48,7 +101,10 @@ jobs:
               }
               
               const path = 'public/captures/${{ github.event.client_payload.id }}.png';
+              
+              // Use fullPage: false to keep it exactly 16:10
               await page.screenshot({ path: path });
+              
               await browser.close();
               console.log('✅ Captured successfully');
             } catch (e) {
