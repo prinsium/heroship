@@ -27,7 +27,7 @@ const ScreenshotPreview: React.FC = () => {
         <img 
           src={`/captures/${id}.png`} 
           alt="Screenshot preview"
-          style={{ width: '100%', height: '100%', objectCover: 'cover' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           // If the image hasn't been captured yet, show a loading state
           onError={(e) => {
             e.currentTarget.style.display = 'none'
