@@ -69,7 +69,9 @@ jobs:
               });
               const page = await browser.newPage();
               
-              // Set viewport to 16:10 with high-res scale (Retina style)
+              // FIX 1: Disguise as a real browser to bypass bot-checks
+              await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
               await page.setViewport({ 
                 width: 1280, 
                 height: 800, 
@@ -78,31 +80,35 @@ jobs:
               
               console.log('Navigating to: ${{ github.event.client_payload.url }}');
               
-              // 1. Fast load
+              // FIX 2: Use 'load' instead of 'domcontentloaded' for these heavy sites
               await page.goto('${{ github.event.client_payload.url }}', { 
-                waitUntil: 'domcontentloaded', 
+                waitUntil: 'load', 
                 timeout: 90000 
               });
               
-              // 2. SMART WAIT: Wait for the Hero content to exist
+              // FIX 3: Force a tiny scroll. This 'wakes up' many lazy-load animations
+              await page.evaluate(() => window.scrollBy(0, 50));
+              await new Promise(resolve => setTimeout(resolve, 500));
+              await page.evaluate(() => window.scrollBy(0, -50));
+
+              // 2. SMART WAIT: Looking for visible content
               try {
-                await page.waitForSelector('h1, h2, main, #hero', { timeout: 15000 });
+                await page.waitForSelector('h1, h2, main, #hero', { visible: true, timeout: 15000 });
                 console.log('Found main content, waiting for animations...');
               } catch (e) {
                 console.log('Could not find specific hero selector, proceeding anyway.');
               }
 
-              // 3. THE MAGIC PAUSE: Give animations (like Walrus waves) time to finish
-              await new Promise(resolve => setTimeout(resolve, 5000));
+              // FIX 4: Increased to 8 seconds. This is the sweet spot for Linear/Databricks
+              await new Promise(resolve => setTimeout(resolve, 8000));
               
-              // Ensure directory exists
               if (!fs.existsSync('public/captures')) {
                 fs.mkdirSync('public/captures', { recursive: true });
               }
               
               const path = 'public/captures/${{ github.event.client_payload.id }}.png';
               
-              // Use fullPage: false to keep it exactly 16:10
+              // Take the screenshot
               await page.screenshot({ path: path });
               
               await browser.close();
@@ -112,7 +118,7 @@ jobs:
               process.exit(1);
             }
           })();"
-
+          
       - name: Commit and Push
         run: |
           git config --global user.name 'github-actions[bot]'
