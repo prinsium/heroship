@@ -17,7 +17,7 @@ export default async function HomePage() {
       </header>
 
       {/* The Responsive Grid */}
-      <div className="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
+      <div className="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {heros.map((hero) => (
           <div key={hero.id} className="group flex flex-col gap-1 p-2 rounded-lg bg-zinc-900">
             {/* Image Container with Osmo-style rounding and border */}
