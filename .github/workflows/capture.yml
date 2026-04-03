@@ -14,7 +14,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
       
       - name: Install Puppeteer and Chrome
         run: |
@@ -98,15 +98,15 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
-          # 1. Add the new images
+          # 1. Stage the specific capture folder
           git add public/captures/
           
-          # 2. Commit (only if there are changes)
-          git commit -m "Capture: ${{ github.event.client_payload.url }}" || exit 0
+          # 2. Commit the changes locally on the runner
+          # We use || echo to ensure the script doesn't crash if no new image was made
+          git commit -m "Capture: ${{ github.event.client_payload.url }}" || echo "No changes to commit"
           
-          # 3. THE FIX: Pull any changes you made while the action was running
-          # --rebase ensures the bot's screenshot is added AFTER your latest code
+          # 3. Now that the workspace is 'clean' (because we committed), we can rebase safely
           git pull --rebase origin main
           
-          # 4. Push safely
+          # 4. Push the combined work
           git push origin main
