@@ -15,10 +15,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm' # Uses GitHub's built-in cache for node_modules
+          cache: 'npm'
 
       - name: Install Dependencies
-        # 'npm ci' is faster than 'npm install' for CI/CD
         run: npm ci
 
       - name: Take 16:10 Screenshot
@@ -27,6 +26,7 @@ jobs:
           const puppeteer = require('puppeteer-extra');
           const StealthPlugin = require('puppeteer-extra-plugin-stealth');
           const fs = require('fs');
+          const path = require('path'); // Added for safe path handling
 
           puppeteer.use(StealthPlugin());
 
@@ -34,7 +34,6 @@ jobs:
             let browser;
             try {
               browser = await puppeteer.launch({ 
-                // OPTIMIZATION: Use the runner's built-in Google Chrome to save 150MB download
                 executablePath: '/usr/bin/google-chrome',
                 headless: 'shell',
                 args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] 
@@ -59,17 +58,18 @@ jobs:
                 timeout: 60000 
               });
               
-              // Short wait for Framer animations
               await new Promise(r => setTimeout(r, 4000));
 
-              const dir = 'public/captures';
+              const dir = path.join(process.cwd(), 'public', 'captures');
               if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
               
-              const path = \`\${dir}/\${{ github.event.client_payload.id }}.png\`;
+              // FIX: Use path.join to avoid backslash/octal escape errors
+              const fileName = '${{ github.event.client_payload.id }}' + '.png';
+              const filePath = path.join(dir, fileName);
               
-              await page.screenshot({ path: path, optimizeForSpeed: true });
+              await page.screenshot({ path: filePath, optimizeForSpeed: true });
               
-              console.log('✅ Captured successfully');
+              console.log('✅ Captured successfully to: ' + filePath);
             } catch (e) {
               console.error('❌ Error:', e.message);
               process.exit(1);
