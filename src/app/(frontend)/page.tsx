@@ -6,7 +6,7 @@ import React from 'react'
 
 export default async function HomePage() {
   const payload = await getPayload({ config })
-  const { docs: heros } = await payload.find({ collection: 'heroship' })
+  const { docs: heros } = await payload.find({ collection: 'heroship', depth: 1, limit: 100, })
 
   return (
     <main className="min-h-screen bg-[#050505] text-zinc-100 p-6 md:p-12 lg:p-16">
