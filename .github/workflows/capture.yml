@@ -58,7 +58,7 @@ jobs:
               
               await page.goto('${{ github.event.client_payload.url }}', { 
                 waitUntil: 'networkidle2', 
-                timeout: 60000 
+                timeout: 90000 
               });
 
               // --- START COOKIE DISMISSAL LOGIC ---
