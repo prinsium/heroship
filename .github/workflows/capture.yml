@@ -26,7 +26,7 @@ jobs:
           const puppeteer = require('puppeteer-extra');
           const StealthPlugin = require('puppeteer-extra-plugin-stealth');
           const fs = require('fs');
-          const path = require('path'); // Added for safe path handling
+          const path = require('path');
 
           puppeteer.use(StealthPlugin());
 
@@ -41,10 +41,13 @@ jobs:
               
               const page = await browser.newPage();
               
-              // Resource Saving: Block unneeded scripts
               await page.setRequestInterception(true);
               page.on('request', (req) => {
-                if (['font', 'media'].includes(req.resourceType()) || req.url().includes('analytics')) {
+                const url = req.url().toLowerCase();
+                // BLOCKING COOKIE SCRIPTS: Prevents banners from even loading
+                const isAdsOrConsent = ['google-analytics', 'cookiebot', 'onetrust', 'consent', 'analytics'].some(term => url.includes(term));
+                
+                if (['font', 'media'].includes(req.resourceType()) || isAdsOrConsent) {
                   req.abort();
                 } else {
                   req.continue();
@@ -57,13 +60,32 @@ jobs:
                 waitUntil: 'networkidle2', 
                 timeout: 60000 
               });
+
+              // --- START COOKIE DISMISSAL LOGIC ---
+              await page.evaluate(() => {
+                const selectors = [
+                  '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowallSelection', // Cookiebot (from your screenshot)
+                  '[id*=\"reject\"]', '[id*=\"necessary\"]', '[class*=\"reject\"]', '[class*=\"necessary\"]',
+                  'button[aria-label*=\"Reject\"]', 'button[aria-label*=\"Necessary\"]'
+                ];
+                
+                selectors.forEach(selector => {
+                  const element = document.querySelector(selector);
+                  if (element) element.click();
+                });
+
+                // Force hide any lingering overlays
+                const styles = document.createElement('style');
+                styles.innerHTML = '[class*=\"cookie\"], [id*=\"cookie\"], [class*=\"consent\"], [id*=\"consent\"] { display: none !important; }';
+                document.head.appendChild(styles);
+              });
+              // --- END COOKIE DISMISSAL LOGIC ---
               
               await new Promise(r => setTimeout(r, 4000));
 
               const dir = path.join(process.cwd(), 'public', 'captures');
               if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
               
-              // FIX: Use path.join to avoid backslash/octal escape errors
               const fileName = '${{ github.event.client_payload.id }}' + '.png';
               const filePath = path.join(dir, fileName);
               
