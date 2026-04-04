@@ -3,25 +3,36 @@
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 
-export async function getFilteredHeros(tagIds: (string | number)[]) {
+export async function getFilteredHeros(tagIds: (string | number)[], page: number = 1, limit: number = 12) {
   const payload = await getPayload({ config })
 
   try {
-    // We use Payload's Local API here, which is much faster and safer than a REST URL
-    const { docs } = await payload.find({
+    // Build the query object dynamically
+    const query: any = {
       collection: 'heroship',
       depth: 1,
-      limit: 100,
-      where: {
+      limit: limit,
+      page: page,
+    }
+
+    // Only add the tags filter if the user actually selected some
+    if (tagIds.length > 0) {
+      query.where = {
         tags: {
           in: tagIds,
         },
-      },
-    })
+      }
+    }
 
-    return docs
+    const result = await payload.find(query)
+
+    // Return the documents AND the pagination info
+    return {
+      docs: result.docs,
+      hasNextPage: result.hasNextPage, 
+    }
   } catch (error) {
     console.error("🚨 Payload Local API Error:", error)
-    return [] // Return empty array on error to prevent crashes
+    return { docs: [], hasNextPage: false }
   }
 }

@@ -57,16 +57,16 @@ export default function Navbar({ availableTags, onApplyFilters }: any) {
         <div className="flex items-center gap-4">
           <button 
             onClick={isModalOpen && tempTags.length > 0 ? handleApply : () => setIsModalOpen(true)}
-            className="text-sm font-medium uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
+            className="text-sm font-medium uppercase tracking-widest text-white hover:text-[#05DF72] transition-colors"
           >
             {isModalOpen && tempTags.length > 0 ? 'Apply' : 'Filter'}
           </button>
 
-          <button className="p-2 text-zinc-400 hover:text-white transition-colors">
+          <button className="p-2 text-white hover:text-[#05DF72] transition-colors">
             {isModalOpen ? (
               <X onClick={handleClose} size={20} className="cursor-pointer" />
             ) : (
-              <Grip size={20} className="cursor-default opacity-50" />
+              <Grip size={20} className="cursor-default" />
             )}
           </button>
         </div>
@@ -112,14 +112,14 @@ export default function Navbar({ availableTags, onApplyFilters }: any) {
               })}
             </div>
             
-            {tempTags.length > 0 && (
+            {/* {tempTags.length > 0 && (
               <button 
                 onClick={handleApply}
                 className="mt-12 flex items-center gap-2 bg-white text-black px-6 py-3 rounded-md font-medium hover:bg-zinc-200 transition-colors"
               >
                 Apply Filters <ArrowRight size={18} />
               </button>
-            )}
+            )} */}
           </div>
         </div>
       )}
