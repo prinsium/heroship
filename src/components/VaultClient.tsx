@@ -111,7 +111,7 @@ export default function VaultClient({ initialHeros, initialHasNextPage, availabl
 
       <header 
         className={`max-w-[1600px] mx-auto mb-16 transition-all duration-300 ease-out ${
-          currentTags.length > 0 ? 'pt-40' : 'pt-20'
+          currentTags.length > 0 ? 'pt-10' : 'pt-0'
         }`}> 
        </header>
 
