@@ -86,10 +86,10 @@ jobs:
               const dir = path.join(process.cwd(), 'public', 'captures');
               if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
               
-              const fileName = '${{ github.event.client_payload.id }}' + '.png';
+              const fileName = '${{ github.event.client_payload.id }}' + '.webp';
               const filePath = path.join(dir, fileName);
               
-              await page.screenshot({ path: filePath, optimizeForSpeed: true });
+              await page.screenshot({ path: filePath, type: 'webp', quality: 75, optimizeForSpeed: true });
               
               console.log('✅ Captured successfully to: ' + filePath);
             } catch (e) {

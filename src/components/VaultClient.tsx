@@ -121,7 +121,7 @@ export default function VaultClient({ initialHeros, initialHasNextPage, availabl
               <div key={hero.id} className="group flex flex-col gap-1 p-2 rounded-lg bg-zinc-900">
                 <div className="relative aspect-[16/10] w-full rounded-md overflow-hidden bg-zinc-900 border border-white/[0.08] transition-all duration-500">
                   <Image 
-                    src={`/captures/${hero.id}.png`} 
+                    src={`/captures/${hero.id}.webp`} 
                     alt={hero.link || 'Hero image'}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
