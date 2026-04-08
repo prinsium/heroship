@@ -109,6 +109,12 @@ export default function VaultClient({ initialHeros, initialHasNextPage, availabl
     <>
       <Navbar availableTags={availableTags} onApplyFilters={handleApplyFilters} />
 
+      <header 
+        className={`max-w-[1600px] mx-auto mb-16 transition-all duration-300 ease-out ${
+          currentTags.length > 0 ? 'pt-40' : 'pt-20'
+        }`}> 
+       </header>
+
       <div className="max-w-[1600px] mx-auto pb-20"> {/* Added pb-20 for breathing room at bottom */}
         {/* Full Screen Loading (When applying filters) */}
         {isLoading ? (
