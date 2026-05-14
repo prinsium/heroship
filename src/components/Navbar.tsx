@@ -3,12 +3,17 @@
 import { useState } from 'react';
 import { Grip, X, ArrowRight } from 'lucide-react';
 
-export default function Navbar({ availableTags, onApplyFilters }: any) {
+export default function Navbar({ availableTags = [], onApplyFilters }: any) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Stores the full tag objects { id, title } for the UI chips
   const [tempTags, setTempTags] = useState<any[]>([]);
   const [activeTags, setActiveTags] = useState<any[]>([]);
+
+  // Sort the tags alphabetically by their title
+  const sortedTags = [...availableTags].sort((a, b) => 
+    a.title.localeCompare(b.title)
+  );
 
   // Toggle selection inside the modal
   const handleTagToggle = (tag: any) => {
@@ -90,11 +95,12 @@ export default function Navbar({ availableTags, onApplyFilters }: any) {
 
       {/* The Filter Modal */}
       {isModalOpen && (
-        <div className="ixed left-0 right-0 bottom-0 top-[73px] h-[calc(100dvh-73px)] bg-[#050505] flex flex-col p-8 md:px-16 overflow-y-auto z-40">
+        <div className="fixed left-0 right-0 bottom-0 top-[73px] h-[calc(100dvh-73px)] bg-[#050505] flex flex-col p-8 md:px-16 overflow-y-auto z-40">
           <div className="max-w-[1600px] mx-auto w-full">
             <h2 className="text-zinc-500 uppercase text-xs mb-6 tracking-widest">Select Tags</h2>
             <div className="flex flex-wrap gap-3">
-              {availableTags.map((tag: any) => {
+              {/* Using the sortedTags array here */}
+              {sortedTags.map((tag: any) => {
                 const isSelected = tempTags.some(t => t.id === tag.id);
                 return (
                   <button
@@ -111,15 +117,6 @@ export default function Navbar({ availableTags, onApplyFilters }: any) {
                 );
               })}
             </div>
-            
-            {/* {tempTags.length > 0 && (
-              <button 
-                onClick={handleApply}
-                className="mt-12 flex items-center gap-2 bg-white text-black px-6 py-3 rounded-md font-medium hover:bg-zinc-200 transition-colors"
-              >
-                Apply Filters <ArrowRight size={18} />
-              </button>
-            )} */}
           </div>
         </div>
       )}
