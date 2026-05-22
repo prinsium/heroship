@@ -109,6 +109,8 @@
 #           git pull --rebase origin main
 #           git push origin main
 
+
+
 name: Remote Screenshot Capture
 on:
   repository_dispatch:
@@ -133,7 +135,6 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          # Native light installation without massive third-party filter dependencies
           npm ci || npm install puppeteer-extra puppeteer-extra-plugin-stealth
 
       - name: Take 16:10 Screenshot
@@ -149,7 +150,6 @@ jobs:
           (async () => {
             let browser;
             try {
-              // Safety Drop-Dead fallback alarm (45s max run)
               setTimeout(() => { 
                 console.error('⏳ Runner took too long. Terminating script safely.'); 
                 process.exit(1); 
@@ -165,7 +165,6 @@ jobs:
               await page.setDefaultNavigationTimeout(30000);
               await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
 
-              // 1. NATIVE REQUEST BLOCKER (Fast, reliable, zero extra packages needed)
               await page.setRequestInterception(true);
               page.on('request', (req) => {
                 const url = req.url().toLowerCase();
@@ -176,8 +175,7 @@ jobs:
                   'consent', 'gtm.js', 'adsbygoogle', 'facebook.net', 'trustarc'
                 ];
                 
-                const shouldBlock = blockTerms.some(term => url.includes(term)) || 
-                                    ['font', 'media'].includes(resourceType);
+                const shouldBlock = blockTerms.some(term => url.includes(term)) || ['font', 'media'].includes(resourceType);
 
                 if (shouldBlock) {
                   req.abort();
@@ -191,30 +189,17 @@ jobs:
 
               console.log('🌐 Navigating to:', targetUrl);
               
-              // 2. STABLE LIFECYCLE TARGET
-              // Using standard 'load' combined with intercept drop prevents hanging on modern framework SPAs
               await page.goto(targetUrl, { 
                 waitUntil: 'load'
               });
 
-              // 3. AGGRESSIVE DOM ELEMENT PURGE
-              // Immediately inject CSS rules targeting known overlay architecture classes and styles
+              // FIXED: The CSS block is written cleanly on one single line now to make bash look right past it.
               await page.evaluate(() => {
                 const styles = document.createElement('style');
-                styles.innerHTML = `
-                  [class*=\"cookie\"], [id*=\"cookie\"], [class*=\"consent\"], [id*=\"consent\"],
-                  [class*=\"modal\"], [id*=\"modal\"], [class*=\"popup\"], [id*=\"popup\"],
-                  [class*=\"overlay\"], [id*=\"overlay\"], [id*=\"sp_message_container\"],
-                  .app-banner, .announcement-banner, #onetrust-banner-sdk, #didomi-popup,
-                  div[role=\"dialog\"], div[aria-modal=\"true\"] { 
-                    display: none !important; opacity: 0 !important; pointer-events: none !important; 
-                  }
-                  body, html { overflow: auto !important; position: static !important; }
-                `;
+                styles.innerHTML = '[class*=\"cookie\"],[id*=\"cookie\"],[class*=\"consent\"],[id*=\"consent\"],[class*=\"modal\"],[id*=\"modal\"],[class*=\"popup\"],[id*=\"popup\"],[class*=\"overlay\"],[id*=\"overlay\"],[id*=\"sp_message_container\"],.app-banner,.announcement-banner,#onetrust-banner-sdk,#didomi-popup,div[role=\"dialog\"],div[aria-modal=\"true\"]{display:none !important;opacity:0 !important;pointer-events:none !important;} body,html{overflow:auto !important;position:static !important;}';
                 document.head.appendChild(styles);
               });
               
-              // Wait 5 seconds for background animations/layouts to calm down naturally
               console.log('⏱️ Settling layout graphics...');
               await new Promise(r => setTimeout(r, 5000));
 
