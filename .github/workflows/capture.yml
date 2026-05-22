@@ -137,9 +137,11 @@ jobs:
         run: |
           npm ci || npm install puppeteer-extra puppeteer-extra-plugin-stealth
 
-      - name: Take 16:10 Screenshot
+      # 1. CREATE A CLEAN INDEPENDENT SCRIPT FILE
+      # This completely isolates the script from bash string manipulation traps
+      - name: Create Capture Script
         run: |
-          node -e "
+          cat << 'EOF' > capture.js
           const puppeteer = require('puppeteer-extra');
           const StealthPlugin = require('puppeteer-extra-plugin-stealth');
           const fs = require('fs');
@@ -184,8 +186,8 @@ jobs:
                 }
               });
 
-              const targetUrl = '${{ github.event.client_payload.url }}' || process.env.FALLBACK_URL;
-              const fileId = '${{ github.event.client_payload.id }}' || process.env.FALLBACK_ID;
+              const targetUrl = process.env.TARGET_URL || process.env.FALLBACK_URL;
+              const fileId = process.env.FILE_ID || process.env.FALLBACK_ID;
 
               console.log('🌐 Navigating to:', targetUrl);
               
@@ -193,10 +195,19 @@ jobs:
                 waitUntil: 'load'
               });
 
-              // FIXED: The CSS block is written cleanly on one single line now to make bash look right past it.
+              // The CSS banner block is now 100% safe inside a real file
               await page.evaluate(() => {
                 const styles = document.createElement('style');
-                styles.innerHTML = '[class*=\"cookie\"],[id*=\"cookie\"],[class*=\"consent\"],[id*=\"consent\"],[class*=\"modal\"],[id*=\"modal\"],[class*=\"popup\"],[id*=\"popup\"],[class*=\"overlay\"],[id*=\"overlay\"],[id*=\"sp_message_container\"],.app-banner,.announcement-banner,#onetrust-banner-sdk,#didomi-popup,div[role=\"dialog\"],div[aria-modal=\"true\"]{display:none !important;opacity:0 !important;pointer-events:none !important;} body,html{overflow:auto !important;position:static !important;}';
+                styles.innerHTML = `
+                  [class*="cookie"], [id*="cookie"], [class*="consent"], [id*="consent"],
+                  [class*="modal"], [id*="modal"], [class*="popup"], [id*="popup"],
+                  [class*="overlay"], [id*="overlay"], [id*="sp_message_container"],
+                  .app-banner, .announcement-banner, #onetrust-banner-sdk, #didomi-popup,
+                  div[role="dialog"], div[aria-modal="true"] { 
+                    display: none !important; opacity: 0 !important; pointer-events: none !important; 
+                  }
+                  body, html { overflow: auto !important; position: static !important; }
+                `;
                 document.head.appendChild(styles);
               });
               
@@ -218,8 +229,15 @@ jobs:
             } finally {
               if (browser) await browser.close();
             }
-          })();"
+          })();
+          EOF
+
+      # 2. RUN THE FILE CLEANLY WITH SAFE ENV CONTEXT
+      - name: Take 16:10 Screenshot
+        run: node capture.js
         env:
+          TARGET_URL: '${{ github.event.client_payload.url }}'
+          FILE_ID: '${{ github.event.client_payload.id }}'
           FALLBACK_URL: 'https://example.com'
           FALLBACK_ID: 'hero-screenshot'
 
