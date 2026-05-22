@@ -204,9 +204,9 @@ jobs:
                 document.head.appendChild(styles);
               });
               
-              // Give the layout and images exactly 5 seconds to settle visually
-              console.log('⏱️ Waiting 5s for visual layout to settle...');
-              await new Promise(r => setTimeout(r, 5000));
+              // Give the layout and images exactly 15 seconds to settle visually
+              console.log('⏱️ Waiting 15s for visual layout to settle...');
+              await new Promise(r => setTimeout(r, 15000));
 
               const dir = path.join(process.cwd(), 'public', 'captures');
               if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
