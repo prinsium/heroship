@@ -109,7 +109,6 @@
 #           git pull --rebase origin main
 #           git push origin main
 
-
 name: Remote Screenshot Capture
 on:
   repository_dispatch:
@@ -134,16 +133,14 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          # Ensuring all necessary scraping and ad-blocking packages are explicitly pulled
-          npm ci || npm install puppeteer-extra puppeteer-extra-plugin-stealth @cliqz/adblocker-puppeteer cross-fetch
+          # Native light installation without massive third-party filter dependencies
+          npm ci || npm install puppeteer-extra puppeteer-extra-plugin-stealth
 
       - name: Take 16:10 Screenshot
         run: |
           node -e "
           const puppeteer = require('puppeteer-extra');
           const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-          const { PuppeteerBlocker } = require('@cliqz/adblocker-puppeteer');
-          const fetch = require('cross-fetch');
           const fs = require('fs');
           const path = require('path');
 
@@ -152,10 +149,9 @@ jobs:
           (async () => {
             let browser;
             try {
-              // 1. ABSOLUTE DROP-DEAD TIMER
-              // If anything freezes, kill the entire script in 45 seconds max.
+              // Safety Drop-Dead fallback alarm (45s max run)
               setTimeout(() => { 
-                console.error('⏳ Hard script timeout reached. Forcing exit to prevent infinite hang.'); 
+                console.error('⏳ Runner took too long. Terminating script safely.'); 
                 process.exit(1); 
               }, 45000);
 
@@ -166,47 +162,61 @@ jobs:
               });
               
               const page = await browser.newPage();
-              
-              // Set a strict 25-second max navigation budget
-              await page.setDefaultNavigationTimeout(25000);
-
-              // 2. INITIALIZE COMMUNITY AD & COOKIE BLOCKER
-              const blocker = await PuppeteerBlocker.fromPrebuiltAdsAndTracking(fetch);
-              await blocker.enableBlockingInPage(page);
-
+              await page.setDefaultNavigationTimeout(30000);
               await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
-              
-              // Fallback handling for when the 60-day cron runs (which won't have a client_payload)
+
+              // 1. NATIVE REQUEST BLOCKER (Fast, reliable, zero extra packages needed)
+              await page.setRequestInterception(true);
+              page.on('request', (req) => {
+                const url = req.url().toLowerCase();
+                const resourceType = req.resourceType();
+                
+                const blockTerms = [
+                  'google-analytics', 'analytics', 'cookiebot', 'onetrust', 'cookie-law', 
+                  'consent', 'gtm.js', 'adsbygoogle', 'facebook.net', 'trustarc'
+                ];
+                
+                const shouldBlock = blockTerms.some(term => url.includes(term)) || 
+                                    ['font', 'media'].includes(resourceType);
+
+                if (shouldBlock) {
+                  req.abort();
+                } else {
+                  req.continue();
+                }
+              });
+
               const targetUrl = '${{ github.event.client_payload.url }}' || process.env.FALLBACK_URL;
               const fileId = '${{ github.event.client_payload.id }}' || process.env.FALLBACK_ID;
 
               console.log('🌐 Navigating to:', targetUrl);
               
-              // 3. FAST LOADING STATE
-              // 'domcontentloaded' finishes immediately when HTML is structural. Won't hang on endless tracking scripts.
+              // 2. STABLE LIFECYCLE TARGET
+              // Using standard 'load' combined with intercept drop prevents hanging on modern framework SPAs
               await page.goto(targetUrl, { 
-                waitUntil: 'domcontentloaded'
+                waitUntil: 'load'
               });
 
-              // 4. INJECT AGGRESSIVE MODAL/BANNER NUKE
-              // Forcibly hides structural wrappers and unlocks background scroll freezing
+              // 3. AGGRESSIVE DOM ELEMENT PURGE
+              // Immediately inject CSS rules targeting known overlay architecture classes and styles
               await page.evaluate(() => {
                 const styles = document.createElement('style');
                 styles.innerHTML = `
                   [class*=\"cookie\"], [id*=\"cookie\"], [class*=\"consent\"], [id*=\"consent\"],
                   [class*=\"modal\"], [id*=\"modal\"], [class*=\"popup\"], [id*=\"popup\"],
+                  [class*=\"overlay\"], [id*=\"overlay\"], [id*=\"sp_message_container\"],
                   .app-banner, .announcement-banner, #onetrust-banner-sdk, #didomi-popup,
-                  [id*=\"sp_message_container\"] { 
-                    display: none !important; pointer-events: none !important; 
+                  div[role=\"dialog\"], div[aria-modal=\"true\"] { 
+                    display: none !important; opacity: 0 !important; pointer-events: none !important; 
                   }
                   body, html { overflow: auto !important; position: static !important; }
                 `;
                 document.head.appendChild(styles);
               });
               
-              // Give the layout and images exactly 15 seconds to settle visually
-              console.log('⏱️ Waiting 15s for visual layout to settle...');
-              await new Promise(r => setTimeout(r, 15000));
+              // Wait 5 seconds for background animations/layouts to calm down naturally
+              console.log('⏱️ Settling layout graphics...');
+              await new Promise(r => setTimeout(r, 5000));
 
               const dir = path.join(process.cwd(), 'public', 'captures');
               if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -218,14 +228,13 @@ jobs:
               console.log('✅ Captured successfully to: ' + filePath);
 
             } catch (e) {
-              console.error('❌ Error during capture phase:', e.message);
+              console.error('❌ Error caught:', e.message);
               process.exit(1);
             } finally {
               if (browser) await browser.close();
             }
           })();"
         env:
-          # IMPORTANT: Update these default values for your 60-day automated cron runner!
           FALLBACK_URL: 'https://example.com'
           FALLBACK_ID: 'hero-screenshot'
 
