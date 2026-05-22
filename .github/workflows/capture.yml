@@ -134,6 +134,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
+          # Ensuring all necessary scraping and ad-blocking packages are explicitly pulled
           npm ci || npm install puppeteer-extra puppeteer-extra-plugin-stealth @cliqz/adblocker-puppeteer cross-fetch
 
       - name: Take 16:10 Screenshot
@@ -151,6 +152,13 @@ jobs:
           (async () => {
             let browser;
             try {
+              // 1. ABSOLUTE DROP-DEAD TIMER
+              // If anything freezes, kill the entire script in 45 seconds max.
+              setTimeout(() => { 
+                console.error('⏳ Hard script timeout reached. Forcing exit to prevent infinite hang.'); 
+                process.exit(1); 
+              }, 45000);
+
               browser = await puppeteer.launch({ 
                 executablePath: '/usr/bin/google-chrome',
                 headless: 'shell',
@@ -159,37 +167,46 @@ jobs:
               
               const page = await browser.newPage();
               
-              // 1. ROBUST BANNER & POP-UP BLOCKING
-              // This fetches the popular Easylist + Easyprivacy lists to block cookie banners entirely
+              // Set a strict 25-second max navigation budget
+              await page.setDefaultNavigationTimeout(25000);
+
+              // 2. INITIALIZE COMMUNITY AD & COOKIE BLOCKER
               const blocker = await PuppeteerBlocker.fromPrebuiltAdsAndTracking(fetch);
               await blocker.enableBlockingInPage(page);
 
               await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
               
-              // Handle fallback values if triggered by GitHub Schedule instead of Repository Dispatch
-              const targetUrl = '${{ github.event.client_payload.url }}' || process.env.FALLBACK_URL || 'https://example.com';
-              const fileId = '${{ github.event.client_payload.id }}' || process.env.FALLBACK_ID || 'default-hero';
+              // Fallback handling for when the 60-day cron runs (which won't have a client_payload)
+              const targetUrl = '${{ github.event.client_payload.url }}' || process.env.FALLBACK_URL;
+              const fileId = '${{ github.event.client_payload.id }}' || process.env.FALLBACK_ID;
 
+              console.log('🌐 Navigating to:', targetUrl);
+              
+              // 3. FAST LOADING STATE
+              // 'domcontentloaded' finishes immediately when HTML is structural. Won't hang on endless tracking scripts.
               await page.goto(targetUrl, { 
-                waitUntil: 'networkidle2', 
-                timeout: 90000 
+                waitUntil: 'domcontentloaded'
               });
 
-              // 2. EXTRA INSURANCE: Hide lingering modal wrappers via CSS injection
+              // 4. INJECT AGGRESSIVE MODAL/BANNER NUKE
+              // Forcibly hides structural wrappers and unlocks background scroll freezing
               await page.evaluate(() => {
                 const styles = document.createElement('style');
                 styles.innerHTML = `
                   [class*=\"cookie\"], [id*=\"cookie\"], [class*=\"consent\"], [id*=\"consent\"],
                   [class*=\"modal\"], [id*=\"modal\"], [class*=\"popup\"], [id*=\"popup\"],
-                  .app-banner, .announcement-banner, #onetrust-banner-sdk { 
+                  .app-banner, .announcement-banner, #onetrust-banner-sdk, #didomi-popup,
+                  [id*=\"sp_message_container\"] { 
                     display: none !important; pointer-events: none !important; 
                   }
-                  body, html { overflow: auto !important; }
+                  body, html { overflow: auto !important; position: static !important; }
                 `;
                 document.head.appendChild(styles);
               });
               
-              await new Promise(r => setTimeout(r, 4000));
+              // Give the layout and images exactly 5 seconds to settle visually
+              console.log('⏱️ Waiting 5s for visual layout to settle...');
+              await new Promise(r => setTimeout(r, 5000));
 
               const dir = path.join(process.cwd(), 'public', 'captures');
               if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -198,19 +215,18 @@ jobs:
               const filePath = path.join(dir, fileName);
               
               await page.screenshot({ path: filePath, type: 'webp', quality: 75, optimizeForSpeed: true });
-              
               console.log('✅ Captured successfully to: ' + filePath);
+
             } catch (e) {
-              console.error('❌ Error:', e.message);
+              console.error('❌ Error during capture phase:', e.message);
               process.exit(1);
             } finally {
               if (browser) await browser.close();
             }
           })();"
         env:
-          # OPTIONAL: Define default values here if you want the 60-day cron 
-          # to look at a specific target when no client_payload is provided.
-          FALLBACK_URL: 'https://yourdefaultwebsite.com'
+          # IMPORTANT: Update these default values for your 60-day automated cron runner!
+          FALLBACK_URL: 'https://example.com'
           FALLBACK_ID: 'hero-screenshot'
 
       - name: Commit and Push
@@ -218,6 +234,6 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add public/captures/
-          git commit -m "Capture Update: Auto-renewal" || exit 0
+          git commit -m "Capture Update: Auto-renewal [skip ci]" || exit 0
           git pull --rebase origin main
           git push origin main
