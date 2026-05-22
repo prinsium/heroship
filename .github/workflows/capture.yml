@@ -1,7 +1,122 @@
+# name: Remote Screenshot Capture
+# on:
+#   repository_dispatch:
+#     types: [capture-hero]
+
+# jobs:
+#   screenshot:
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: write
+#     steps:
+#       - uses: actions/checkout@v4
+
+#       - name: Setup Node
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '22'
+#           cache: 'npm'
+
+#       - name: Install Dependencies
+#         run: npm ci
+
+#       - name: Take 16:10 Screenshot
+#         run: |
+#           node -e "
+#           const puppeteer = require('puppeteer-extra');
+#           const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+#           const fs = require('fs');
+#           const path = require('path');
+
+#           puppeteer.use(StealthPlugin());
+
+#           (async () => {
+#             let browser;
+#             try {
+#               browser = await puppeteer.launch({ 
+#                 executablePath: '/usr/bin/google-chrome',
+#                 headless: 'shell',
+#                 args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] 
+#               });
+              
+#               const page = await browser.newPage();
+              
+#               await page.setRequestInterception(true);
+#               page.on('request', (req) => {
+#                 const url = req.url().toLowerCase();
+#                 // BLOCKING COOKIE SCRIPTS: Prevents banners from even loading
+#                 const isAdsOrConsent = ['google-analytics', 'cookiebot', 'onetrust', 'consent', 'analytics'].some(term => url.includes(term));
+                
+#                 if (['font', 'media'].includes(req.resourceType()) || isAdsOrConsent) {
+#                   req.abort();
+#                 } else {
+#                   req.continue();
+#                 }
+#               });
+
+#               await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
+              
+#               await page.goto('${{ github.event.client_payload.url }}', { 
+#                 waitUntil: 'networkidle2', 
+#                 timeout: 90000 
+#               });
+
+#               // --- START COOKIE DISMISSAL LOGIC ---
+#               await page.evaluate(() => {
+#                 const selectors = [
+#                   '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowallSelection', // Cookiebot (from your screenshot)
+#                   '[id*=\"reject\"]', '[id*=\"necessary\"]', '[class*=\"reject\"]', '[class*=\"necessary\"]',
+#                   'button[aria-label*=\"Reject\"]', 'button[aria-label*=\"Necessary\"]'
+#                 ];
+                
+#                 selectors.forEach(selector => {
+#                   const element = document.querySelector(selector);
+#                   if (element) element.click();
+#                 });
+
+#                 // Force hide any lingering overlays
+#                 const styles = document.createElement('style');
+#                 styles.innerHTML = '[class*=\"cookie\"], [id*=\"cookie\"], [class*=\"consent\"], [id*=\"consent\"] { display: none !important; }';
+#                 document.head.appendChild(styles);
+#               });
+#               // --- END COOKIE DISMISSAL LOGIC ---
+              
+#               await new Promise(r => setTimeout(r, 4000));
+
+#               const dir = path.join(process.cwd(), 'public', 'captures');
+#               if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+              
+#               const fileName = '${{ github.event.client_payload.id }}' + '.webp';
+#               const filePath = path.join(dir, fileName);
+              
+#               await page.screenshot({ path: filePath, type: 'webp', quality: 75, optimizeForSpeed: true });
+              
+#               console.log('✅ Captured successfully to: ' + filePath);
+#             } catch (e) {
+#               console.error('❌ Error:', e.message);
+#               process.exit(1);
+#             } finally {
+#               if (browser) await browser.close();
+#             }
+#           })();"
+
+#       - name: Commit and Push
+#         run: |
+#           git config --global user.name 'github-actions[bot]'
+#           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+#           git add public/captures/
+#           git commit -m "Capture: ${{ github.event.client_payload.id }}" || exit 0
+#           git pull --rebase origin main
+#           git push origin main
+
+
 name: Remote Screenshot Capture
 on:
   repository_dispatch:
     types: [capture-hero]
+  schedule:
+    # Runs at 00:00 on day 1 of every second month (Approx every 60 days)
+    - cron: '0 0 1 */2 *'
 
 jobs:
   screenshot:
@@ -10,93 +125,97 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
-
+          node-version: '20'
+      
       - name: Install Dependencies
-        run: npm ci
+        run: |
+          npm install puppeteer
+          npx puppeteer browsers install chrome
 
-      - name: Take 16:10 Screenshot
+      # Scenario A: Running automatically on a schedule for ALL links
+      # It hits your live project endpoint to get the list of active links dynamically
+      - name: Fetch and Capture Bulk Scheduled Screenshots
+        if: github.event_name == 'schedule'
         run: |
           node -e "
-          const puppeteer = require('puppeteer-extra');
-          const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+          const puppeteer = require('puppeteer');
           const fs = require('fs');
-          const path = require('path');
-
-          puppeteer.use(StealthPlugin());
-
           (async () => {
-            let browser;
             try {
-              browser = await puppeteer.launch({ 
-                executablePath: '/usr/bin/google-chrome',
-                headless: 'shell',
-                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] 
-              });
-              
+              // Replace this URL with your live deployed URL once hosted
+              const response = await fetch('http://localhost:3000/api/heroship?limit=100');
+              const data = await response.json();
+              if (!data.docs || data.docs.length === 0) return console.log('No links found.');
+
+              const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
               const page = await browser.newPage();
-              
-              await page.setRequestInterception(true);
-              page.on('request', (req) => {
-                const url = req.url().toLowerCase();
-                // BLOCKING COOKIE SCRIPTS: Prevents banners from even loading
-                const isAdsOrConsent = ['google-analytics', 'cookiebot', 'onetrust', 'consent', 'analytics'].some(term => url.includes(term));
-                
-                if (['font', 'media'].includes(req.resourceType()) || isAdsOrConsent) {
-                  req.abort();
-                } else {
-                  req.continue();
+              await page.setViewport({ width: 1280, height: 800 });
+
+              if (!fs.existsSync('public/captures')) fs.mkdirSync('public/captures', { recursive: true });
+
+              for (const hero of data.docs) {
+                console.log('Refreshing: ' + hero.link);
+                try {
+                  await page.goto(hero.link, { waitUntil: 'networkidle2', timeout: 60000 });
+                  
+                  // BANNER NUKE FUNCTION
+                  await page.evaluate(() => {
+                    const selectors = ['[id*=\"cookie\"]', '[class*=\"cookie\"]', '[id*=\"banner\"]', '[class*=\"banner\"]', '[class*=\"modal\"]', '[class*=\"popup\"]'];
+                    selectors.forEach(s => document.querySelectorAll(s).forEach(el => {
+                      if (!['HEADER', 'BODY', 'HTML', 'MAIN'].includes(el.tagName)) el.remove();
+                    }));
+                  });
+
+                  await page.screenshot({ path: 'public/captures/' + hero.id + '.png' });
+                } catch (err) {
+                  console.error('Failed to capture ' + hero.name, err.message);
                 }
-              });
+              }
+              await browser.close();
+            } catch (e) {
+              console.error(e);
+              process.exit(1);
+            }
+          })();"
 
-              await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
+      # Scenario B: Running instantly on a single link dispatch when you hit save
+      # (Single-link manual dispatch triggers inside the GitHub environment)
+      - name: Take Instant 16:10 Screenshot
+        if: github.event_name == 'repository_dispatch'
+        run: |
+          node -e "
+          const puppeteer = require('puppeteer');
+          const fs = require('fs');
+          (async () => {
+            try {
+              const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
+              const page = await browser.newPage();
+              await page.setViewport({ width: 1280, height: 800 });
               
-              await page.goto('${{ github.event.client_payload.url }}', { 
-                waitUntil: 'networkidle2', 
-                timeout: 90000 
-              });
-
-              // --- START COOKIE DISMISSAL LOGIC ---
+              console.log('Navigating to: ${{ github.event.client_payload.url }}');
+              await page.goto('${{ github.event.client_payload.url }}', { waitUntil: 'networkidle2', timeout: 60000 });
+              
+              // BANNER NUKE FUNCTION
               await page.evaluate(() => {
-                const selectors = [
-                  '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowallSelection', // Cookiebot (from your screenshot)
-                  '[id*=\"reject\"]', '[id*=\"necessary\"]', '[class*=\"reject\"]', '[class*=\"necessary\"]',
-                  'button[aria-label*=\"Reject\"]', 'button[aria-label*=\"Necessary\"]'
-                ];
-                
-                selectors.forEach(selector => {
-                  const element = document.querySelector(selector);
-                  if (element) element.click();
-                });
-
-                // Force hide any lingering overlays
-                const styles = document.createElement('style');
-                styles.innerHTML = '[class*=\"cookie\"], [id*=\"cookie\"], [class*=\"consent\"], [id*=\"consent\"] { display: none !important; }';
-                document.head.appendChild(styles);
+                const selectors = ['[id*=\"cookie\"]', '[class*=\"cookie\"]', '[id*=\"banner\"]', '[class*=\"banner\"]', '[class*=\"modal\"]', '[class*=\"popup\"]'];
+                selectors.forEach(s => document.querySelectorAll(s).forEach(el => {
+                  if (!['HEADER', 'BODY', 'HTML', 'MAIN'].includes(el.tagName)) el.remove();
+                }));
               });
-              // --- END COOKIE DISMISSAL LOGIC ---
-              
-              await new Promise(r => setTimeout(r, 4000));
 
-              const dir = path.join(process.cwd(), 'public', 'captures');
-              if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+              if (!fs.existsSync('public/captures')) fs.mkdirSync('public/captures', { recursive: true });
               
-              const fileName = '${{ github.event.client_payload.id }}' + '.webp';
-              const filePath = path.join(dir, fileName);
-              
-              await page.screenshot({ path: filePath, type: 'webp', quality: 75, optimizeForSpeed: true });
-              
-              console.log('✅ Captured successfully to: ' + filePath);
+              const path = 'public/captures/${{ github.event.client_payload.id }}.png';
+              await page.screenshot({ path: path });
+              await browser.close();
+              console.log('✅ Captured clean screenshot successfully');
             } catch (e) {
               console.error('❌ Error:', e.message);
               process.exit(1);
-            } finally {
-              if (browser) await browser.close();
             }
           })();"
 
@@ -105,6 +224,5 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add public/captures/
-          git commit -m "Capture: ${{ github.event.client_payload.id }}" || exit 0
-          git pull --rebase origin main
-          git push origin main
+          git commit -m "Automated Capture Update" || echo "No changes to commit"
+          git push
