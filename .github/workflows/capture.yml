@@ -1,123 +1,7 @@
-name: Remote Screenshot Capture
-on:
-  repository_dispatch:
-    types: [capture-hero]
-
-jobs:
-  screenshot:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Take 16:10 Screenshot
-        run: |
-          node -e "
-          const puppeteer = require('puppeteer-extra');
-          const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-          const fs = require('fs');
-          const path = require('path');
-
-          puppeteer.use(StealthPlugin());
-
-          (async () => {
-            let browser;
-            try {
-              browser = await puppeteer.launch({ 
-                executablePath: '/usr/bin/google-chrome',
-                headless: 'shell',
-                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] 
-              });
-              
-              const page = await browser.newPage();
-              
-              await page.setRequestInterception(true);
-              page.on('request', (req) => {
-                const url = req.url().toLowerCase();
-                // BLOCKING COOKIE SCRIPTS: Prevents banners from even loading
-                const isAdsOrConsent = ['google-analytics', 'cookiebot', 'onetrust', 'consent', 'analytics'].some(term => url.includes(term));
-                
-                if (['font', 'media'].includes(req.resourceType()) || isAdsOrConsent) {
-                  req.abort();
-                } else {
-                  req.continue();
-                }
-              });
-
-              await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
-              
-              await page.goto('${{ github.event.client_payload.url }}', { 
-                waitUntil: 'networkidle2', 
-                timeout: 90000 
-              });
-
-              // --- START COOKIE DISMISSAL LOGIC ---
-              await page.evaluate(() => {
-                const selectors = [
-                  '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowallSelection', // Cookiebot (from your screenshot)
-                  '[id*=\"reject\"]', '[id*=\"necessary\"]', '[class*=\"reject\"]', '[class*=\"necessary\"]',
-                  'button[aria-label*=\"Reject\"]', 'button[aria-label*=\"Necessary\"]'
-                ];
-                
-                selectors.forEach(selector => {
-                  const element = document.querySelector(selector);
-                  if (element) element.click();
-                });
-
-                // Force hide any lingering overlays
-                const styles = document.createElement('style');
-                styles.innerHTML = '[class*=\"cookie\"], [id*=\"cookie\"], [class*=\"consent\"], [id*=\"consent\"] { display: none !important; }';
-                document.head.appendChild(styles);
-              });
-              // --- END COOKIE DISMISSAL LOGIC ---
-              
-              await new Promise(r => setTimeout(r, 4000));
-
-              const dir = path.join(process.cwd(), 'public', 'captures');
-              if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-              
-              const fileName = '${{ github.event.client_payload.id }}' + '.webp';
-              const filePath = path.join(dir, fileName);
-              
-              await page.screenshot({ path: filePath, type: 'webp', quality: 75, optimizeForSpeed: true });
-              
-              console.log('✅ Captured successfully to: ' + filePath);
-            } catch (e) {
-              console.error('❌ Error:', e.message);
-              process.exit(1);
-            } finally {
-              if (browser) await browser.close();
-            }
-          })();"
-
-      - name: Commit and Push
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add public/captures/
-          git commit -m "Capture: ${{ github.event.client_payload.id }}" || exit 0
-          git pull --rebase origin main
-          git push origin main
-
-
-
 # name: Remote Screenshot Capture
 # on:
 #   repository_dispatch:
 #     types: [capture-hero]
-#   schedule:
-#     # Runs at 00:00 on day 1 of every second month (approx. every 60 days)
-#     - cron: '0 0 1 */2 *'
 
 # jobs:
 #   screenshot:
@@ -134,14 +18,11 @@ jobs:
 #           cache: 'npm'
 
 #       - name: Install Dependencies
-#         run: |
-#           npm ci || npm install puppeteer-extra puppeteer-extra-plugin-stealth
+#         run: npm ci
 
-#       # 1. CREATE A CLEAN INDEPENDENT SCRIPT FILE
-#       # This completely isolates the script from bash string manipulation traps
-#       - name: Create Capture Script
+#       - name: Take 16:10 Screenshot
 #         run: |
-#           cat << 'EOF' > capture.js
+#           node -e "
 #           const puppeteer = require('puppeteer-extra');
 #           const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 #           const fs = require('fs');
@@ -152,11 +33,6 @@ jobs:
 #           (async () => {
 #             let browser;
 #             try {
-#               setTimeout(() => { 
-#                 console.error('⏳ Runner took too long. Terminating script safely.'); 
-#                 process.exit(1); 
-#               }, 45000);
-
 #               browser = await puppeteer.launch({ 
 #                 executablePath: '/usr/bin/google-chrome',
 #                 headless: 'shell',
@@ -164,88 +40,212 @@ jobs:
 #               });
               
 #               const page = await browser.newPage();
-#               await page.setDefaultNavigationTimeout(30000);
-#               await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
-
+              
 #               await page.setRequestInterception(true);
 #               page.on('request', (req) => {
 #                 const url = req.url().toLowerCase();
-#                 const resourceType = req.resourceType();
+#                 // BLOCKING COOKIE SCRIPTS: Prevents banners from even loading
+#                 const isAdsOrConsent = ['google-analytics', 'cookiebot', 'onetrust', 'consent', 'analytics'].some(term => url.includes(term));
                 
-#                 const blockTerms = [
-#                   'google-analytics', 'analytics', 'cookiebot', 'onetrust', 'cookie-law', 
-#                   'consent', 'gtm.js', 'adsbygoogle', 'facebook.net', 'trustarc'
-#                 ];
-                
-#                 const shouldBlock = blockTerms.some(term => url.includes(term)) || ['font', 'media'].includes(resourceType);
-
-#                 if (shouldBlock) {
+#                 if (['font', 'media'].includes(req.resourceType()) || isAdsOrConsent) {
 #                   req.abort();
 #                 } else {
 #                   req.continue();
 #                 }
 #               });
 
-#               const targetUrl = process.env.TARGET_URL || process.env.FALLBACK_URL;
-#               const fileId = process.env.FILE_ID || process.env.FALLBACK_ID;
-
-#               console.log('🌐 Navigating to:', targetUrl);
+#               await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
               
-#               await page.goto(targetUrl, { 
-#                 waitUntil: 'load'
+#               await page.goto('${{ github.event.client_payload.url }}', { 
+#                 waitUntil: 'networkidle2', 
+#                 timeout: 90000 
 #               });
 
-#               // The CSS banner block is now 100% safe inside a real file
+#               // --- START COOKIE DISMISSAL LOGIC ---
 #               await page.evaluate(() => {
+#                 const selectors = [
+#                   '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowallSelection', // Cookiebot (from your screenshot)
+#                   '[id*=\"reject\"]', '[id*=\"necessary\"]', '[class*=\"reject\"]', '[class*=\"necessary\"]',
+#                   'button[aria-label*=\"Reject\"]', 'button[aria-label*=\"Necessary\"]'
+#                 ];
+                
+#                 selectors.forEach(selector => {
+#                   const element = document.querySelector(selector);
+#                   if (element) element.click();
+#                 });
+
+#                 // Force hide any lingering overlays
 #                 const styles = document.createElement('style');
-#                 styles.innerHTML = `
-#                   [class*="cookie"], [id*="cookie"], [class*="consent"], [id*="consent"],
-#                   [class*="modal"], [id*="modal"], [class*="popup"], [id*="popup"],
-#                   [class*="overlay"], [id*="overlay"], [id*="sp_message_container"],
-#                   .app-banner, .announcement-banner, #onetrust-banner-sdk, #didomi-popup,
-#                   div[role="dialog"], div[aria-modal="true"] { 
-#                     display: none !important; opacity: 0 !important; pointer-events: none !important; 
-#                   }
-#                   body, html { overflow: auto !important; position: static !important; }
-#                 `;
+#                 styles.innerHTML = '[class*=\"cookie\"], [id*=\"cookie\"], [class*=\"consent\"], [id*=\"consent\"] { display: none !important; }';
 #                 document.head.appendChild(styles);
 #               });
+#               // --- END COOKIE DISMISSAL LOGIC ---
               
-#               console.log('⏱️ Settling layout graphics...');
-#               await new Promise(r => setTimeout(r, 5000));
+#               await new Promise(r => setTimeout(r, 4000));
 
 #               const dir = path.join(process.cwd(), 'public', 'captures');
 #               if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
               
-#               const fileName = fileId + '.webp';
+#               const fileName = '${{ github.event.client_payload.id }}' + '.webp';
 #               const filePath = path.join(dir, fileName);
               
 #               await page.screenshot({ path: filePath, type: 'webp', quality: 75, optimizeForSpeed: true });
+              
 #               console.log('✅ Captured successfully to: ' + filePath);
-
 #             } catch (e) {
-#               console.error('❌ Error caught:', e.message);
+#               console.error('❌ Error:', e.message);
 #               process.exit(1);
 #             } finally {
 #               if (browser) await browser.close();
 #             }
-#           })();
-#           EOF
-
-#       # 2. RUN THE FILE CLEANLY WITH SAFE ENV CONTEXT
-#       - name: Take 16:10 Screenshot
-#         run: node capture.js
-#         env:
-#           TARGET_URL: '${{ github.event.client_payload.url }}'
-#           FILE_ID: '${{ github.event.client_payload.id }}'
-#           FALLBACK_URL: 'https://example.com'
-#           FALLBACK_ID: 'hero-screenshot'
+#           })();"
 
 #       - name: Commit and Push
 #         run: |
 #           git config --global user.name 'github-actions[bot]'
 #           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 #           git add public/captures/
-#           git commit -m "Capture Update: Auto-renewal [skip ci]" || exit 0
+#           git commit -m "Capture: ${{ github.event.client_payload.id }}" || exit 0
 #           git pull --rebase origin main
 #           git push origin main
+
+
+
+name: Remote Screenshot Capture
+on:
+  repository_dispatch:
+    types: [capture-hero]
+  schedule:
+    # Runs at 00:00 on day 1 of every second month (approx. every 60 days)
+    - cron: '0 0 1 */2 *'
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          npm ci || npm install puppeteer-extra puppeteer-extra-plugin-stealth
+
+      # 1. CREATE A CLEAN INDEPENDENT SCRIPT FILE
+      # This completely isolates the script from bash string manipulation traps
+      - name: Create Capture Script
+        run: |
+          cat << 'EOF' > capture.js
+          const puppeteer = require('puppeteer-extra');
+          const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+          const fs = require('fs');
+          const path = require('path');
+
+          puppeteer.use(StealthPlugin());
+
+          (async () => {
+            let browser;
+            try {
+              setTimeout(() => { 
+                console.error('⏳ Runner took too long. Terminating script safely.'); 
+                process.exit(1); 
+              }, 45000);
+
+              browser = await puppeteer.launch({ 
+                executablePath: '/usr/bin/google-chrome',
+                headless: 'shell',
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] 
+              });
+              
+              const page = await browser.newPage();
+              await page.setDefaultNavigationTimeout(30000);
+              await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
+
+              await page.setRequestInterception(true);
+              page.on('request', (req) => {
+                const url = req.url().toLowerCase();
+                const resourceType = req.resourceType();
+                
+                const blockTerms = [
+                  'google-analytics', 'analytics', 'cookiebot', 'onetrust', 'cookie-law', 
+                  'consent', 'gtm.js', 'adsbygoogle', 'facebook.net', 'trustarc'
+                ];
+                
+                const shouldBlock = blockTerms.some(term => url.includes(term)) || ['font', 'media'].includes(resourceType);
+
+                if (shouldBlock) {
+                  req.abort();
+                } else {
+                  req.continue();
+                }
+              });
+
+              const targetUrl = process.env.TARGET_URL || process.env.FALLBACK_URL;
+              const fileId = process.env.FILE_ID || process.env.FALLBACK_ID;
+
+              console.log('🌐 Navigating to:', targetUrl);
+              
+              await page.goto(targetUrl, { 
+                waitUntil: 'load'
+              });
+
+              // The CSS banner block is now 100% safe inside a real file
+              await page.evaluate(() => {
+                const styles = document.createElement('style');
+                styles.innerHTML = `
+                  [class*="cookie"], [id*="cookie"], [class*="consent"], [id*="consent"],
+                  [class*="modal"], [id*="modal"], [class*="popup"], [id*="popup"],
+                  [class*="overlay"], [id*="overlay"], [id*="sp_message_container"],
+                  .app-banner, .announcement-banner, #onetrust-banner-sdk, #didomi-popup,
+                  div[role="dialog"], div[aria-modal="true"] { 
+                    display: none !important; opacity: 0 !important; pointer-events: none !important; 
+                  }
+                  body, html { overflow: auto !important; position: static !important; }
+                `;
+                document.head.appendChild(styles);
+              });
+              
+              console.log('⏱️ Settling layout graphics...');
+              await new Promise(r => setTimeout(r, 5000));
+
+              const dir = path.join(process.cwd(), 'public', 'captures');
+              if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+              
+              const fileName = fileId + '.webp';
+              const filePath = path.join(dir, fileName);
+              
+              await page.screenshot({ path: filePath, type: 'webp', quality: 75, optimizeForSpeed: true });
+              console.log('✅ Captured successfully to: ' + filePath);
+
+            } catch (e) {
+              console.error('❌ Error caught:', e.message);
+              process.exit(1);
+            } finally {
+              if (browser) await browser.close();
+            }
+          })();
+          EOF
+
+      # 2. RUN THE FILE CLEANLY WITH SAFE ENV CONTEXT
+      - name: Take 16:10 Screenshot
+        run: node capture.js
+        env:
+          TARGET_URL: '${{ github.event.client_payload.url }}'
+          FILE_ID: '${{ github.event.client_payload.id }}'
+          FALLBACK_URL: 'https://example.com'
+          FALLBACK_ID: 'hero-screenshot'
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add public/captures/
+          git commit -m "Capture Update: Auto-renewal [skip ci]" || exit 0
+          git pull --rebase origin main
+          git push origin main
