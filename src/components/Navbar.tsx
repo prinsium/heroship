@@ -6,13 +6,13 @@ import Image from 'next/image';
 
 export default function Navbar({ availableTags = [], onApplyFilters }: any) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   // Stores the full tag objects { id, title } for the UI chips
   const [tempTags, setTempTags] = useState<any[]>([]);
   const [activeTags, setActiveTags] = useState<any[]>([]);
 
   // Sort the tags alphabetically by their title
-  const sortedTags = [...availableTags].sort((a, b) => 
+  const sortedTags = [...availableTags].sort((a, b) =>
     a.title.localeCompare(b.title)
   );
 
@@ -55,34 +55,31 @@ export default function Navbar({ availableTags = [], onApplyFilters }: any) {
     <nav className="fixed top-0 left-0 w-full z-50 bg-[#050505]/90 backdrop-blur-md border-b border-white/10 px-6 py-4">
       <div className="max-w-[1600px] mx-auto flex justify-between items-center">
         {/* Logo */}
-         <div className="text-xl font-medium tracking-tight text-white">
+        <div className="text-xl font-medium tracking-tight text-white">
           heroship<span className="text-blue-500">.</span>
         </div>
 
         {/* Dynamic Action Group */}
         <div className="flex items-center gap-4">
-  <button 
-    onClick={isModalOpen && tempTags.length > 0 ? handleApply : () => setIsModalOpen(true)}
-    className="w-12 h-12 flex items-center justify-center rounded-full border border-zinc-200 bg-white transition-colors group"
-  >
-    {isModalOpen && tempTags.length > 0 ? (
-      <Check size={18} className="text-zinc-900 group-hover:text-[#05DF72]" />
-    ) : (
-      <SlidersHorizontal size={18} className="text-zinc-900 group-hover:text-[#05DF72]" />
-    )}
-  </button>
+          <button
+            onClick={isModalOpen && tempTags.length > 0 ? handleApply : () => setIsModalOpen(true)}
+            className="flex items-center gap-2 rounded-full p-3 border border-zinc-700 bg-zinc-900 text-white transition-colors group"
+          >
+            {isModalOpen && tempTags.length > 0 ? (
+              <Check size={18} className="text-white group-hover:text-[#05DF72]" />
+            ) : (
+              <SlidersHorizontal size={18} className="text-white group-hover:text-[#05DF72]" />
+            )}
+          </button>
 
-  <button className="flex items-center gap-2 rounded-full px-6 py-3 border border-zinc-700 bg-zinc-900 text-white transition-colors group">
-    {isModalOpen ? (
-      <X onClick={handleClose} size={18} className="text-white group-hover:text-[#05DF72]" />
-    ) : (
-      <Dot size={18} className="text-white group-hover:text-[#05DF72]" />
-    )}
-    <span className="text-sm font-medium tracking-wide">
-      Get Started
-    </span>
-  </button>
-</div>
+          <button className="flex items-center gap-2 rounded-full p-3 border border-zinc-700 bg-zinc-900 text-white transition-colors group">
+            {isModalOpen ? (
+              <X onClick={handleClose} size={18} className="text-white group-hover:text-[#05DF72]" />
+            ) : (
+              <Dot size={18} className="text-white group-hover:text-[#05DF72]" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* The Active Filter Chips (Outside Modal) */}
@@ -91,10 +88,10 @@ export default function Navbar({ availableTags = [], onApplyFilters }: any) {
           {activeTags.map(tag => (
             <div key={tag.id} className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 text-white text-xs px-3 py-1.5 rounded-md">
               {tag.title}
-              <X 
-                size={14} 
-                className="cursor-pointer text-zinc-400 hover:text-red-400" 
-                onClick={() => handleRemoveChip(tag.id)} 
+              <X
+                size={14}
+                className="cursor-pointer text-zinc-400 hover:text-red-400"
+                onClick={() => handleRemoveChip(tag.id)}
               />
             </div>
           ))}
@@ -114,11 +111,10 @@ export default function Navbar({ availableTags = [], onApplyFilters }: any) {
                   <button
                     key={tag.id}
                     onClick={() => handleTagToggle(tag)}
-                    className={`px-4 py-2 rounded-full border text-sm transition-all ${
-                      isSelected
-                        ? 'bg-white text-black border-white font-medium'
-                        : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
-                    }`}
+                    className={`px-4 py-2 rounded-full border text-sm transition-all ${isSelected
+                      ? 'bg-white text-black border-white font-medium'
+                      : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                      }`}
                   >
                     {tag.title}
                   </button>
