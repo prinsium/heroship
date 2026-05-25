@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Grip, X, ArrowRight } from 'lucide-react';
+import { Grip, X, ArrowRight, Dot, SlidersHorizontal, Check } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Navbar({ availableTags = [], onApplyFilters }: any) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -54,24 +55,29 @@ export default function Navbar({ availableTags = [], onApplyFilters }: any) {
     <nav className="fixed top-0 left-0 w-full z-50 bg-[#050505]/90 backdrop-blur-md border-b border-white/10 px-6 py-4">
       <div className="max-w-[1600px] mx-auto flex justify-between items-center">
         {/* Logo */}
-        <div className="text-xl font-medium tracking-tight text-white">
-          heroship<span className="text-blue-500">.</span>
+        <div>
+          <Image
+            src="/heroship.svg"
+            alt="Heroship"
+            width={30}
+            height={30}
+          />
         </div>
 
         {/* Dynamic Action Group */}
         <div className="flex items-center gap-4">
           <button 
             onClick={isModalOpen && tempTags.length > 0 ? handleApply : () => setIsModalOpen(true)}
-            className="text-sm font-medium uppercase tracking-widest text-white hover:text-[#05DF72] transition-colors"
+            className="text-sm font-medium uppercase tracking-widest text-white bg-[#474747] p-5 rounded-full hover:text-[#05DF72] transition-colors"
           >
-            {isModalOpen && tempTags.length > 0 ? 'Apply' : 'Filter'}
+            {isModalOpen && tempTags.length > 0 ? <Check size={20} className="cursor-default" /> : <SlidersHorizontal size={20} className="cursor-default" />}
           </button>
 
-          <button className="p-2 text-white hover:text-[#05DF72] transition-colors">
+          <button className="bg-[#474747] p-5 rounded-full text-white hover:text-[#05DF72] transition-colors">
             {isModalOpen ? (
               <X onClick={handleClose} size={20} className="cursor-pointer" />
             ) : (
-              <Grip size={20} className="cursor-default" />
+              <Dot size={20} className="cursor-default" />
             )}
           </button>
         </div>

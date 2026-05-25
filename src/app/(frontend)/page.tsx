@@ -20,7 +20,7 @@ export default async function HomePage() {
   })
 
   return (
-    <main className="min-h-screen bg-[#050505] text-zinc-100 p-6 mt-16 md:mt-12 lg:mt-6 md:p-12 lg:p-16">
+    <main className="min-h-screen bg-[#050505] text-zinc-100 p-6 mt-12 md:mt-8 lg:mt-4 md:p-12 lg:p-16">
 
       {/* Pass the initial data AND the pagination state to the Client Component */}
       <VaultClient 
