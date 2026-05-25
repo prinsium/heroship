@@ -66,17 +66,17 @@ export default function Navbar({ availableTags = [], onApplyFilters }: any) {
             className="flex items-center gap-2 rounded-full p-3 border border-zinc-700 bg-zinc-900 text-white transition-colors group"
           >
             {isModalOpen && tempTags.length > 0 ? (
-              <Check size={18} className="text-white group-hover:text-[#05DF72]" />
+              <Check size={8} className="text-white group-hover:text-[#05DF72]" />
             ) : (
-              <SlidersHorizontal size={18} className="text-white group-hover:text-[#05DF72]" />
+              <SlidersHorizontal size={8} className="text-white group-hover:text-[#05DF72]" />
             )}
           </button>
 
           <button className="flex items-center gap-2 rounded-full p-3 border border-zinc-700 bg-zinc-900 text-white transition-colors group">
             {isModalOpen ? (
-              <X onClick={handleClose} size={18} className="text-white group-hover:text-[#05DF72]" />
+              <X onClick={handleClose} size={8} className="text-white group-hover:text-[#05DF72]" />
             ) : (
-              <Dot size={18} className="text-white group-hover:text-[#05DF72]" />
+              <Dot size={8} className="text-white group-hover:text-[#05DF72]" />
             )}
           </button>
         </div>
