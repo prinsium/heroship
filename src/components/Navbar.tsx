@@ -55,29 +55,31 @@ export default function Navbar({ availableTags = [], onApplyFilters }: any) {
     <nav className="fixed top-0 left-0 w-full z-50 bg-[#050505]/90 backdrop-blur-md border-b border-white/10 px-6 py-4">
       <div className="max-w-[1600px] mx-auto flex justify-between items-center">
         {/* Logo */}
-        <div>
-          <Image
+        <div className="flex flex-row gap-4 items-center p-4 rounded-sm bg-[#050505] backdrop-blur-md">
+          <div className="w-8 h-2 bg-[#0CF9AA] rounded-sm"></div>
+          <div className="w-8 h-4 bg-[#1e1e1e] rounded-sm"></div>
+          {/* <Image
             src="/heroship.svg"
             alt="Heroship"
             width={30}
             height={30}
-          />
+          /> */}
         </div>
 
         {/* Dynamic Action Group */}
         <div className="flex items-center gap-4">
           <button 
             onClick={isModalOpen && tempTags.length > 0 ? handleApply : () => setIsModalOpen(true)}
-            className="text-sm font-medium uppercase tracking-widest text-white bg-[#474747] p-5 rounded-full hover:text-[#05DF72] transition-colors"
+            className="text-sm font-medium uppercase tracking-widest text-white bg-[#474747] p-4 rounded-full hover:text-[#05DF72] transition-colors"
           >
-            {isModalOpen && tempTags.length > 0 ? <Check size={20} className="cursor-default" /> : <SlidersHorizontal size={20} className="cursor-default" />}
+            {isModalOpen && tempTags.length > 0 ? <Check size={10} className="cursor-default" /> : <SlidersHorizontal size={10} className="cursor-default" />}
           </button>
 
-          <button className="bg-[#474747] p-5 rounded-full text-white hover:text-[#05DF72] transition-colors">
+          <button className="bg-[#474747] p-4 rounded-full text-white hover:text-[#05DF72] transition-colors">
             {isModalOpen ? (
-              <X onClick={handleClose} size={20} className="cursor-pointer" />
+              <X onClick={handleClose} size={10} className="cursor-pointer" />
             ) : (
-              <Dot size={20} className="cursor-default" />
+              <Dot size={10} className="cursor-default" />
             )}
           </button>
         </div>
