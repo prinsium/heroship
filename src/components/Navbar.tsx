@@ -61,21 +61,28 @@ export default function Navbar({ availableTags = [], onApplyFilters }: any) {
 
         {/* Dynamic Action Group */}
         <div className="flex items-center gap-4">
-          <button 
-            onClick={isModalOpen && tempTags.length > 0 ? handleApply : () => setIsModalOpen(true)}
-            className="text-sm font-medium uppercase tracking-widest text-white bg-[#474747] hover:text-[#05DF72] transition-colors"
-          >
-            {isModalOpen && tempTags.length > 0 ? <Check size={10} className="p-4 rounded-full cursor-default" /> : <SlidersHorizontal size={10} className="p-4 rounded-full cursor-default" />}
-          </button>
+  <button 
+    onClick={isModalOpen && tempTags.length > 0 ? handleApply : () => setIsModalOpen(true)}
+    className="w-12 h-12 flex items-center justify-center rounded-full border border-zinc-200 bg-white transition-colors group"
+  >
+    {isModalOpen && tempTags.length > 0 ? (
+      <Check size={18} className="text-zinc-900 group-hover:text-[#05DF72]" />
+    ) : (
+      <SlidersHorizontal size={18} className="text-zinc-900 group-hover:text-[#05DF72]" />
+    )}
+  </button>
 
-          <button className="bg-[#474747] text-white hover:text-[#05DF72] transition-colors">
-            {isModalOpen ? (
-              <X onClick={handleClose} size={10} className="p-4 rounded-full cursor-pointer" />
-            ) : (
-              <Dot size={10} className="p-4 rounded-full cursor-default" />
-            )}
-          </button>
-        </div>
+  <button className="flex items-center gap-2 rounded-full px-6 py-3 border border-zinc-700 bg-zinc-900 text-white transition-colors group">
+    {isModalOpen ? (
+      <X onClick={handleClose} size={18} className="text-white group-hover:text-[#05DF72]" />
+    ) : (
+      <Dot size={18} className="text-white group-hover:text-[#05DF72]" />
+    )}
+    <span className="text-sm font-medium tracking-wide">
+      Get Started
+    </span>
+  </button>
+</div>
       </div>
 
       {/* The Active Filter Chips (Outside Modal) */}
