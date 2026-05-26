@@ -61,26 +61,47 @@ export default function Navbar({ availableTags = [], onApplyFilters }: any) {
 
         {/* Dynamic Action Group */}
         <div className="flex items-center gap-4">
-          <button
-            onClick={isModalOpen && tempTags.length > 0 ? handleApply : () => setIsModalOpen(true)}
-            className="flex items-center gap-2 rounded-full p-3 border border-zinc-700 bg-zinc-900 text-white transition-colors group"
-          >
-            {isModalOpen && tempTags.length > 0 ? (
-              <Check size={8} className="text-white group-hover:text-[#05DF72]" />
-            ) : (
-              <SlidersHorizontal size={8} className="text-white group-hover:text-[#05DF72]" />
-            )}
-          </button>
+          {isModalOpen ? (
+            <>
+              {/* 1. Check Button: Only appears inside the open modal IF tags are selected */}
+              {tempTags.length > 0 && (
+                <button
+                  onClick={handleApply}
+                  className="flex items-center justify-center rounded-full p-3 border border-zinc-700 bg-zinc-900 text-white transition-colors group"
+                >
+                  <Check
+                    size={8}
+                    className="text-white group-hover:text-[#05DF72] md:w-3.5 md:h-3.5"
+                  />
+                </button>
+              )}
 
-          <button className="flex items-center gap-2 rounded-full p-3 border border-zinc-700 bg-zinc-900 text-white transition-colors group">
-            {isModalOpen ? (
-              <X onClick={handleClose} size={8} className="text-white group-hover:text-[#05DF72]" />
-            ) : (
-              <Dot size={8} className="text-white group-hover:text-[#05DF72]" />
-            )}
-          </button>
+              {/* 2. Close Button: Always appears when the modal is open to let users dismiss it */}
+              <button
+                onClick={handleClose}
+                className="flex items-center justify-center rounded-full p-3 border border-zinc-700 bg-zinc-900 text-white transition-colors group"
+              >
+                <X
+                  size={8}
+                  className="text-white group-hover:text-[#05DF72] md:w-3.5 md:h-3.5"
+                />
+              </button>
+            </>
+          ) : (
+            /* 3. Filter/Slider Button: The default single icon when the modal is closed */
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center justify-center rounded-full p-3 border border-zinc-700 bg-zinc-900 text-white transition-colors group"
+            >
+              <SlidersHorizontal
+                size={8}
+                className="text-white group-hover:text-[#05DF72] md:w-3.5 md:h-3.5"
+              />
+            </button>
+          )}
         </div>
       </div>
+
 
       {/* The Active Filter Chips (Outside Modal) */}
       {!isModalOpen && activeTags.length > 0 && (
