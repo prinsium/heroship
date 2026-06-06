@@ -81,7 +81,7 @@ jobs:
               });
               // --- END COOKIE DISMISSAL LOGIC ---
               
-              await new Promise(r => setTimeout(r, 4000));
+              await new Promise(r => setTimeout(r, 7000));
 
               const dir = path.join(process.cwd(), 'public', 'captures');
               if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
